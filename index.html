@@ -59,11 +59,6 @@
   }
   .photo-card{
     position:relative;
-    height:100%;
-    width:auto;
-    max-width:100%;
-    min-width:0;
-    aspect-ratio:667/1000;
     background:#eef1f6;
     border-radius:16px;
     box-shadow:0 24px 60px rgba(0,0,0,.5), 0 2px 0 rgba(255,255,255,.04) inset;
@@ -317,6 +312,21 @@
 
   .panel-header{ display:flex; align-items:center; justify-content:space-between; }
   .panel-header h1{ font-size:15px; margin:0; font-weight:600; }
+
+  .report-btn{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    background:rgba(245,185,66,.14);
+    border:1px solid rgba(245,185,66,.45);
+    color:#ffd9a0;
+    border-radius:var(--radius-sm);
+    padding:10px 12px;
+    font-size:12.5px;
+    font-weight:600;
+    text-decoration:none;
+    cursor:pointer;
+  }
+  .report-btn:hover{ background:rgba(245,185,66,.22); }
+  .report-btn svg{ width:16px; height:16px; flex:none; }
   .power-switch{ position:relative; width:46px;height:26px; flex:none; }
   .power-switch input{ position:absolute;inset:0; opacity:0; margin:0; cursor:pointer; }
   .power-switch .track{ position:absolute;inset:0; background:var(--surface-3); border:1px solid var(--border-soft); border-radius:999px; transition:background .2s,border-color .2s; }
@@ -507,6 +517,11 @@
         </label>
       </div>
 
+      <a class="report-btn" id="btnReport" href="https://forms.cloud.microsoft/pages/responsepage.aspx?id=nSO3nW5N-0C5l2sGcs-waD4rOEQBJvxMioyKSdf68CxUNlBPTktOVDFZWExFQllRNTZHNVVJODRKMyQlQCN0PWcu&origin=lprLink&route=shorturl" target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        <span>Reportar daño del equipo</span>
+      </a>
+
       <button type="button" class="start-btn" id="startBtn" hidden>▶ Iniciar terapia</button>
 
       <div class="section" id="secGas">
@@ -636,6 +651,21 @@ const photoStage = document.getElementById('photoStage');
 const zoomResetBtn = document.getElementById('zoomReset');
 let tiltX=0, tiltY=0, zoom=1;
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const PHOTO_RATIO = 667/1000;
+function sizePhotoCard(){
+  const stagePad = 24; // 12px padding on each side of .photo-stage
+  const availW = Math.max(photoStage.clientWidth - stagePad, 0);
+  const availH = Math.max(photoStage.clientHeight - stagePad, 0);
+  let w = availH * PHOTO_RATIO;
+  let h = availH;
+  if(w > availW){ w = availW; h = availW / PHOTO_RATIO; }
+  photoCard.style.width = w+'px';
+  photoCard.style.height = h+'px';
+}
+sizePhotoCard();
+window.addEventListener('resize', sizePhotoCard);
+window.addEventListener('orientationchange', sizePhotoCard);
 
 function applyCardTransform(){
   photoCard.style.transform = 'perspective(1200px) rotateX('+tiltX+'deg) rotateY('+tiltY+'deg) scale('+zoom+')';
@@ -1337,6 +1367,7 @@ function toggleSheet(){
   const collapsed = panel.classList.toggle('collapsed');
   panelGrip.setAttribute('aria-expanded', String(!collapsed));
   panelBody.style.display = collapsed ? 'none' : 'flex';
+  requestAnimationFrame(sizePhotoCard);
 }
 panelGrip.addEventListener('click', toggleSheet);
 panelGrip.addEventListener('keydown', (e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggleSheet(); } });
