@@ -1,0 +1,1345 @@
+<title>Simulador Atlan A350</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --bg:#0a0f1a;
+    --surface:#121a2b;
+    --surface-2:#182338;
+    --surface-3:#1e2c45;
+    --border:#293a4c;
+    --border-soft:#26334d;
+    --text:#e7ecf5;
+    --text-dim:#8c99b3;
+    --text-faint:#5b6784;
+    --accent:#2fd3c7;
+    --accent-soft:rgba(47,211,199,.14);
+    --radius-lg:18px;
+    --radius-md:12px;
+    --radius-sm:8px;
+    --font-body:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+    --font-mono:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    -webkit-tap-highlight-color:transparent;
+    overflow:hidden;
+  }
+  button,input,select{font-family:inherit;}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+  .app{
+    height:100%;
+    display:grid;
+    grid-template-columns:1fr 372px;
+    grid-template-rows:1fr;
+  }
+  @media (max-width:860px){
+    .app{grid-template-columns:1fr;grid-template-rows:1fr auto;}
+  }
+
+  /* ---------- photo viewport ---------- */
+  .viewport{
+    position:relative;
+    overflow:hidden;
+    background:radial-gradient(120% 100% at 50% 20%, #101a2c 0%, #0a0f1a 60%);
+  }
+  .photo-stage{
+    position:relative;
+    height:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:12px;
+  }
+  .photo-card{
+    position:relative;
+    height:100%;
+    width:auto;
+    max-width:100%;
+    min-width:0;
+    aspect-ratio:667/1000;
+    background:#eef1f6;
+    border-radius:16px;
+    box-shadow:0 24px 60px rgba(0,0,0,.5), 0 2px 0 rgba(255,255,255,.04) inset;
+    overflow:hidden;
+    transform-style:preserve-3d;
+    transition:transform .3s ease;
+    will-change:transform;
+  }
+  .photo-card img{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    display:block;
+    -webkit-user-drag:none;
+    user-select:none;
+    pointer-events:none;
+  }
+  .screen-hit{
+    position:absolute;
+    left:30.0%; top:15.2%; width:26.2%; height:8.8%;
+    border:none;
+    padding:0;
+    background:transparent;
+    cursor:pointer;
+    border-radius:2px;
+  }
+  .screen-hit:hover, .screen-hit:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  #miniScreen{ width:100%; height:100%; display:block; border-radius:1px; }
+
+  .hotspot{
+    position:absolute;
+    transform:translate(-50%,-50%);
+    width:30px;height:30px;
+    border-radius:50%;
+    border:2px solid var(--accent);
+    background:rgba(47,211,199,.2);
+    cursor:pointer;
+    padding:0;
+  }
+  .hotspot::after{
+    content:"";
+    position:absolute; inset:-6px;
+    border-radius:50%;
+    border:1px solid rgba(47,211,199,.5);
+    animation:hotspot-pulse 2s infinite;
+  }
+  @keyframes hotspot-pulse{
+    0%{ transform:scale(.85); opacity:.9; }
+    100%{ transform:scale(1.6); opacity:0; }
+  }
+  @media (prefers-reduced-motion:reduce){ .hotspot::after{animation:none;opacity:.4;} }
+  .hotspot-dot{
+    position:absolute; inset:6px;
+    border-radius:50%;
+    background:var(--accent);
+  }
+
+  .flash-highlight{ animation:flash-out 1.2s ease; }
+  @keyframes flash-out{
+    0%{ box-shadow:0 0 0 3px var(--accent); }
+    100%{ box-shadow:0 0 0 0 rgba(47,211,199,0); }
+  }
+
+  .point-tip{
+    --arrow-shift:0px;
+    position:fixed;
+    z-index:30;
+    width:max-content;
+    max-width:210px;
+    background:var(--surface);
+    border:1px solid var(--accent);
+    border-radius:10px;
+    padding:9px 12px 10px;
+    box-shadow:0 14px 34px rgba(0,0,0,.5);
+    pointer-events:none;
+  }
+  .point-tip strong{ display:block; font-size:12px; color:var(--accent); margin-bottom:3px; }
+  .point-tip p{ margin:0; font-size:11px; line-height:1.4; color:var(--text-dim); }
+  .point-tip::after{
+    content:"";
+    position:absolute;
+    left:calc(50% + var(--arrow-shift));
+    width:12px;height:12px;
+    background:var(--surface);
+    transform:translateX(-50%) rotate(45deg);
+  }
+  .point-tip.tip-above{ transform:translate(-50%,-100%); }
+  .point-tip.tip-above::after{ bottom:-6px; border-right:1px solid var(--accent); border-bottom:1px solid var(--accent); }
+  .point-tip.tip-below{ transform:translate(-50%,0); }
+  .point-tip.tip-below::after{ top:-6px; border-left:1px solid var(--accent); border-top:1px solid var(--accent); }
+
+  .zoom-reset{
+    position:absolute;
+    top:calc(14px + env(safe-area-inset-top,0px));
+    left:14px;
+    background:rgba(18,26,43,.72);
+    border:1px solid var(--border-soft);
+    color:var(--text-dim);
+    font-size:11px;
+    padding:6px 10px;
+    border-radius:999px;
+    cursor:pointer;
+    backdrop-filter:blur(8px);
+  }
+
+  .hud-top{
+    position:absolute;
+    top:calc(16px + env(safe-area-inset-top,0px));
+    left:16px;
+    right:16px;
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+    pointer-events:none;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:rgba(18,26,43,.72);
+    border:1px solid var(--border-soft);
+    backdrop-filter:blur(10px);
+    padding:9px 14px 9px 12px;
+    border-radius:999px;
+    pointer-events:auto;
+  }
+  .led{
+    width:10px;height:10px;border-radius:50%;
+    background:#4a5570;
+    box-shadow:0 0 0 3px rgba(74,85,112,.18);
+    flex:none;
+  }
+  .led.booting{ background:#f5b942; box-shadow:0 0 0 4px rgba(245,185,66,.25); animation:led-pulse 1s infinite; }
+  .led.standby{ background:#2fd3c7; box-shadow:0 0 0 4px rgba(47,211,199,.22); }
+  .led.running{ background:#34d399; box-shadow:0 0 0 4px rgba(52,211,153,.22),0 0 10px rgba(52,211,153,.7); }
+  @keyframes led-pulse{ 0%,100%{opacity:1;} 50%{opacity:.4;} }
+  @media (prefers-reduced-motion:reduce){ .led.booting{animation:none;} }
+
+  .brand-text{display:flex;flex-direction:column;line-height:1.25;}
+  .brand-name{font-size:13px;font-weight:600;letter-spacing:.01em;}
+  .brand-sub{font-size:11px;color:var(--text-dim);font-family:var(--font-mono);}
+
+  .fab{
+    pointer-events:auto;
+    display:flex;align-items:center;gap:8px;
+    background:var(--accent);
+    color:#03211e;
+    border:none;
+    padding:10px 16px;
+    border-radius:999px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    box-shadow:0 6px 20px rgba(47,211,199,.28);
+    transition:transform .15s, box-shadow .15s;
+  }
+  .fab:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(47,211,199,.38);}
+  .fab svg{width:16px;height:16px;flex:none;}
+  .hud-actions{ display:flex; gap:8px; pointer-events:auto; }
+  .fab-icon{ padding:10px; border-radius:50%; }
+  .fab-icon svg{ width:18px; height:18px; }
+
+  .hud-hint{
+    position:absolute;
+    left:50%;
+    bottom:calc(18px + env(safe-area-inset-bottom,0px));
+    transform:translateX(-50%);
+    max-width:min(92%,360px);
+    font-size:11.5px;
+    line-height:1.4;
+    color:var(--text-dim);
+    background:rgba(18,26,43,.85);
+    backdrop-filter:blur(8px);
+    border:1px solid var(--border-soft);
+    padding:8px 14px;
+    border-radius:14px;
+    pointer-events:none;
+    white-space:normal;
+    text-align:center;
+    transition:opacity .25s;
+    z-index:5;
+  }
+  .hud-hint strong{ color:var(--accent); font-weight:600; }
+  @media (max-width:860px){
+    .hud-hint{ font-size:11px; bottom:calc(10px + env(safe-area-inset-bottom,0px)); }
+  }
+
+  .alarm-banner{
+    position:absolute;
+    top:calc(64px + env(safe-area-inset-top,0px));
+    left:50%;
+    transform:translateX(-50%);
+    font-size:12.5px;
+    font-weight:500;
+    padding:8px 14px;
+    border-radius:10px;
+    max-width:min(420px,86vw);
+    text-align:center;
+    border:1px solid transparent;
+    animation:pulse-alarm 1.4s ease-in-out infinite;
+  }
+  .alarm-banner.prio-high{ background:rgba(251,113,133,.2); border-color:rgba(251,113,133,.55); color:#ffd7dd; }
+  .alarm-banner.prio-agent{ background:rgba(250,204,21,.18); border-color:rgba(250,204,21,.5); color:#fff3c4; }
+  @keyframes pulse-alarm{
+    0%,100%{box-shadow:0 0 0 0 rgba(251,113,133,.3);}
+    50%{box-shadow:0 0 0 6px rgba(251,113,133,0);}
+  }
+  @media (prefers-reduced-motion:reduce){ .alarm-banner{animation:none;} }
+
+  /* ---------- control panel ---------- */
+  .panel{
+    background:var(--surface);
+    border-left:1px solid var(--border);
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+  }
+  @media (max-width:860px){
+    .panel{
+      border-left:none;
+      border-top:1px solid var(--border);
+      border-radius:16px 16px 0 0;
+      max-height:56vh;
+    }
+  }
+  .panel-grip{
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:8px 0 4px;
+    cursor:pointer;
+  }
+  .panel-grip::after{
+    content:"";
+    width:36px;height:4px;border-radius:2px;
+    background:var(--border-soft);
+  }
+  @media (max-width:860px){ .panel-grip{display:flex;} }
+
+  .panel-body{
+    flex:1;
+    overflow-y:auto;
+    padding:18px 18px calc(20px + env(safe-area-inset-bottom,0px));
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+
+  .panel-header{ display:flex; align-items:center; justify-content:space-between; }
+  .panel-header h1{ font-size:15px; margin:0; font-weight:600; }
+  .power-switch{ position:relative; width:46px;height:26px; flex:none; }
+  .power-switch input{ position:absolute;inset:0; opacity:0; margin:0; cursor:pointer; }
+  .power-switch .track{ position:absolute;inset:0; background:var(--surface-3); border:1px solid var(--border-soft); border-radius:999px; transition:background .2s,border-color .2s; }
+  .power-switch .thumb{ position:absolute; top:2px;left:2px; width:20px;height:20px; border-radius:50%; background:var(--text-dim); transition:transform .2s,background .2s; }
+  .power-switch input:checked ~ .track{background:var(--accent-soft);border-color:var(--accent);}
+  .power-switch input:checked ~ .thumb{transform:translateX(20px);background:var(--accent);}
+
+  .start-btn{
+    background:var(--accent); color:#03211e; border:none; border-radius:var(--radius-sm);
+    padding:12px; font-size:13.5px; font-weight:700; cursor:pointer;
+    animation:start-pulse 1.6s infinite;
+  }
+  @keyframes start-pulse{ 0%,100%{box-shadow:0 0 0 0 rgba(47,211,199,.35);} 50%{box-shadow:0 0 0 7px rgba(47,211,199,0);} }
+  @media (prefers-reduced-motion:reduce){ .start-btn{animation:none;} }
+
+  .section{
+    border:1px solid var(--border-soft);
+    background:var(--surface-2);
+    border-radius:var(--radius-md);
+    padding:14px 14px 12px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    transition:opacity .2s, box-shadow .2s;
+  }
+  .section.disabled{opacity:.45;pointer-events:none;}
+  .section-title{
+    font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-dim);
+    font-weight:600; display:flex; align-items:center; gap:6px;
+  }
+  .section-title .note{ font-size:10.5px; text-transform:none; letter-spacing:0; color:var(--text-faint); font-weight:400; }
+  #modeLabel{color:var(--accent);text-transform:none;letter-spacing:0;}
+
+  .ctrl-row{display:flex;flex-direction:column;gap:5px;}
+  .ctrl-row .row-top{ display:flex; align-items:baseline; justify-content:space-between; font-size:12.5px; }
+  .ctrl-row label{color:var(--text);font-weight:500;}
+  select{
+    width:100%; background:var(--surface-3); color:var(--text);
+    border:1px solid var(--border-soft); border-radius:var(--radius-sm);
+    padding:8px 10px; font-size:12.5px;
+  }
+
+  .mode-row{ display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; -webkit-overflow-scrolling:touch; }
+  .mode-chip{
+    flex:none; background:var(--surface-3); border:1px solid var(--border-soft); color:var(--text-dim);
+    font-size:11.5px; font-weight:600; padding:7px 12px; border-radius:999px; cursor:pointer; white-space:nowrap;
+  }
+  .mode-chip.active{ background:var(--accent); border-color:var(--accent); color:#03211e; }
+
+  .tile-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(122px,1fr)); gap:8px; }
+  .tile{ border:1px solid var(--border-soft); border-radius:10px; overflow:hidden; background:var(--surface-3); transition:opacity .2s; }
+  .tile.state-gray{ opacity:.4; }
+  .tile-main{
+    width:100%; background:rgba(52,211,153,.12); border:none; border-top:3px solid #34d399;
+    color:var(--text); padding:8px 10px; text-align:left; cursor:pointer;
+    display:flex; flex-direction:column; gap:3px; font-family:inherit;
+  }
+  .tile.state-yellow .tile-main{ background:rgba(250,204,21,.16); border-top-color:#facc15; }
+  .tile.state-gray .tile-main{ cursor:default; border-top-color:var(--border-soft); background:transparent; }
+  .tile-label{ font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-dim); }
+  .tile-value{ font-family:var(--font-mono); font-size:15px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .tile-unit{ font-size:10px; color:var(--text-dim); margin-left:3px; font-weight:400; }
+  .tile-edit{ display:flex; align-items:center; gap:6px; padding:6px 8px 8px; background:var(--surface-2); }
+  .tile-btn{ width:24px;height:24px; border-radius:6px; border:1px solid var(--border-soft); background:var(--surface-3); color:var(--text); font-size:14px; cursor:pointer; flex:none; line-height:1; }
+  .tile-range{ flex:1; margin:0; accent-color:var(--accent); }
+  .tile-confirm{ flex:none; font-size:10.5px; background:var(--accent); color:#03211e; border:none; border-radius:6px; padding:5px 7px; font-weight:700; cursor:pointer; }
+  .tile.tile-blink .tile-main{ animation:tile-blink .5s infinite; }
+  @keyframes tile-blink{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+  @media (prefers-reduced-motion:reduce){ .tile.tile-blink .tile-main{animation:none;opacity:.6;} }
+
+  .computed-line{
+    font-size:11.5px; font-family:var(--font-mono); color:var(--text-dim);
+    border-top:1px dashed var(--border-soft); padding-top:9px; display:flex; justify-content:space-between; gap:8px;
+  }
+
+  .alarm-controls{ display:flex; gap:8px; flex-wrap:wrap; }
+  .icon-btn{
+    background:var(--surface-3); border:1px solid var(--border-soft); color:var(--text);
+    border-radius:var(--radius-sm); padding:8px 12px; font-size:11.5px; font-weight:500; cursor:pointer;
+  }
+  .icon-btn.active{ border-color:var(--accent); color:var(--accent); }
+
+  .measure-btn{
+    align-self:flex-start; background:var(--surface-3); color:var(--text);
+    border:1px solid var(--border-soft); border-radius:var(--radius-sm);
+    padding:8px 13px; font-size:12.5px; font-weight:500; cursor:pointer;
+  }
+  .measure-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .measure-btn:disabled{opacity:.5;cursor:default;}
+
+  .disclaimer{ font-size:10.5px; line-height:1.5; color:var(--text-faint); margin:0; padding-top:2px; }
+
+  /* ---------- modals ---------- */
+  .modal-backdrop{
+    position:fixed;inset:0; background:rgba(5,8,14,.72); backdrop-filter:blur(4px);
+    display:flex; align-items:center; justify-content:center; padding:20px; z-index:50;
+  }
+  .modal-backdrop[hidden]{display:none;}
+  .modal{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg);
+    padding:26px; max-width:340px; width:100%; position:relative; text-align:center;
+  }
+  .modal-close{
+    position:absolute; top:12px;right:12px; width:30px;height:30px; border-radius:50%;
+    border:1px solid var(--border-soft); background:var(--surface-2); color:var(--text-dim);
+    font-size:16px; line-height:1; cursor:pointer;
+  }
+  .modal h2{font-size:16px;margin:4px 0 6px;}
+  .modal p{font-size:12.5px;color:var(--text-dim);line-height:1.5;margin:0 0 18px;}
+  .qr-box{ background:#fff; padding:14px; border-radius:12px; display:inline-flex; margin-bottom:16px; }
+  .qr-box img,.qr-box canvas{display:block;}
+  .url-row{ display:flex; gap:8px; }
+  .url-row input{
+    flex:1; min-width:0; background:var(--surface-3); border:1px solid var(--border-soft);
+    color:var(--text-dim); border-radius:var(--radius-sm); padding:9px 10px; font-size:11px; font-family:var(--font-mono);
+  }
+  .url-row button{
+    background:var(--accent); color:#03211e; border:none; border-radius:var(--radius-sm);
+    padding:0 14px; font-size:12px; font-weight:600; cursor:pointer;
+  }
+  .copy-feedback{ display:block; margin-top:8px; font-size:11px; color:var(--accent); height:14px; }
+
+  .modal-screen{ max-width:460px; text-align:left; padding:20px; }
+  .modal-screen h2{ font-size:13px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.08em; }
+  #modalScreen{ width:100%; height:auto; display:block; border-radius:10px; border:1px solid var(--border-soft); }
+
+  [hidden]{display:none!important;}
+</style>
+
+<div class="app" id="app">
+  <div class="viewport" id="viewport">
+    <div class="photo-stage" id="photoStage">
+      <div class="photo-card" id="photoCard">
+        <img src="atlan.jpg" alt="Estación de anestesia Dräger Atlan A350 XL" id="equipPhoto">
+
+        <button type="button" class="screen-hit" id="screenHit" aria-label="Ampliar la pantalla del equipo">
+          <canvas id="miniScreen"></canvas>
+        </button>
+
+        <button type="button" class="hotspot" style="left:42.7%;top:25.3%" data-target="secVentWrap" data-info="ctrl" aria-label="Controles / mando rotatorio"><span class="hotspot-dot"></span></button>
+        <button type="button" class="hotspot" style="left:69.7%;top:32.5%" data-target="secVapor" data-info="vapor" aria-label="Vaporizador"><span class="hotspot-dot" id="vaporDot"></span></button>
+        <button type="button" class="hotspot" style="left:33.0%;top:35.5%" data-target="secGas" data-info="gasmix" aria-label="Mezclador de gases"><span class="hotspot-dot"></span></button>
+        <button type="button" class="hotspot" style="left:36.0%;top:59.5%" data-target="secGas" data-info="absorber" aria-label="Absorbedor de CO2"><span class="hotspot-dot"></span></button>
+        <button type="button" class="hotspot" style="left:49.5%;top:60.0%" data-target="secVentWrap" data-info="ventpiston" aria-label="Ventilador E-Vent"><span class="hotspot-dot"></span></button>
+        <button type="button" class="hotspot" style="left:8.2%;top:59.0%" data-target="secApl" data-info="bag" aria-label="Bolsa reservorio y circuito respiratorio"><span class="hotspot-dot"></span></button>
+      </div>
+      <button type="button" class="zoom-reset" id="zoomReset" hidden>↺ Restablecer zoom</button>
+    </div>
+
+    <div class="point-tip" id="pointTip" role="status" hidden>
+      <strong id="pointTipLabel"></strong>
+      <p id="pointTipDesc"></p>
+    </div>
+
+    <div class="hud-top">
+      <div class="brand">
+        <span class="led" id="ledIndicator" aria-hidden="true"></span>
+        <div class="brand-text">
+          <span class="brand-name">Estación de Anestesia — Atlan A350</span>
+          <span class="brand-sub" id="statusText">Apagada</span>
+        </div>
+      </div>
+      <div class="hud-actions">
+        <button class="fab fab-icon" id="btnFullscreen" aria-label="Pantalla completa" title="Pantalla completa">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"></path><path d="M16 3h3a2 2 0 0 1 2 2v3"></path><path d="M8 21H5a2 2 0 0 1-2-2v-3"></path><path d="M16 21h3a2 2 0 0 0 2-2v-3"></path></svg>
+        </button>
+        <button class="fab" id="btnShare" aria-haspopup="dialog" aria-controls="qrModal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><line x1="14" y1="14" x2="14" y2="21"></line><line x1="21" y1="14" x2="21" y2="21"></line><line x1="14" y1="21" x2="21" y2="21"></line><line x1="17.5" y1="14" x2="17.5" y2="17.5"></line></svg>
+          <span>Compartir</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="alarm-banner" id="alarmBanner" role="alert" hidden></div>
+
+    <div class="hud-hint" id="hudHint">Toca los puntos sobre el equipo · toca la pantalla para ampliarla · mueve el mouse o pellizca para inclinar/acercar</div>
+  </div>
+
+  <aside class="panel" id="panel">
+    <div class="panel-grip" id="panelGrip" role="button" tabindex="0" aria-expanded="true" aria-controls="panelBody" aria-label="Mostrar u ocultar controles"></div>
+    <div class="panel-body" id="panelBody">
+      <div class="panel-header">
+        <h1>Controles</h1>
+        <label class="power-switch" aria-label="Encendido del equipo">
+          <input type="checkbox" id="ctrlPower">
+          <span class="track"></span>
+          <span class="thumb"></span>
+        </label>
+      </div>
+
+      <button type="button" class="start-btn" id="startBtn" hidden>▶ Iniciar terapia</button>
+
+      <div class="section" id="secGas">
+        <div class="section-title">Suministro de gases</div>
+        <div class="tile-grid" id="gasTiles"></div>
+        <div class="computed-line"><span>Flujo total</span><span id="calcFlow">—</span></div>
+        <div class="computed-line"><span>FiO₂ estimada</span><span id="calcFio2">—</span></div>
+      </div>
+
+      <div class="section" id="secVapor">
+        <div class="section-title">Vaporizador <span class="note" id="vaporNote"></span></div>
+        <div class="ctrl-row">
+          <div class="row-top"><label for="ctrlAgent">Agente (bahía Selectatec)</label></div>
+          <select id="ctrlAgent">
+            <option value="sevo">Sevoflurano</option>
+            <option value="iso">Isoflurano</option>
+            <option value="des">Desflurano</option>
+          </select>
+        </div>
+        <div class="tile-grid" id="vaporTiles"></div>
+      </div>
+
+      <div class="section" id="secVentWrap">
+        <div class="section-title">Ventilador — <span id="modeLabel">VC-CMV</span></div>
+        <div class="mode-row" id="modeChips" role="group" aria-label="Modo de ventilación"></div>
+        <div class="tile-grid" id="ventTiles"></div>
+        <div class="computed-line"><span>Volumen minuto</span><span id="calcMV">—</span></div>
+      </div>
+
+      <div class="section" id="secApl">
+        <div class="section-title">Válvula APL <span class="note" id="aplNote"></span></div>
+        <div class="tile-grid" id="aplTiles"></div>
+      </div>
+
+      <div class="section" id="secAlarms">
+        <div class="section-title">Alarmas</div>
+        <div class="alarm-controls">
+          <button type="button" class="icon-btn" id="btnMute">🔔 Silenciar 2 min</button>
+          <button type="button" class="icon-btn" id="btnReset">Confirmar / Reset</button>
+        </div>
+      </div>
+
+      <div class="section" id="secMonitor">
+        <div class="section-title">Monitor <span class="note">(pantalla del equipo)</span></div>
+        <button type="button" class="measure-btn" id="btnNibp">Medir PANI</button>
+      </div>
+
+      <p class="disclaimer">Simulador educativo construido sobre la fotografía real de la estación de anestesia Dräger Atlan A350&nbsp;XL tomada de su guía de referencia rápida pública, con controles interactivos superpuestos con fines de familiarización del personal asistencial. No es un producto de Dräger ni está afiliado o respaldado por el fabricante, no sustituye las instrucciones de uso oficiales y no debe emplearse para decisiones clínicas reales. Los signos vitales y las curvas son una simulación simplificada.</p>
+    </div>
+  </aside>
+</div>
+
+<div class="modal-backdrop" id="qrBackdrop" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="qrTitle" id="qrModal">
+    <button class="modal-close" id="qrClose" aria-label="Cerrar">×</button>
+    <h2 id="qrTitle">Escanea para abrir</h2>
+    <p>El personal asistencial puede escanear este código QR para abrir el simulador directamente en su propio celular o tablet.</p>
+    <div class="qr-box" id="qrcode"></div>
+    <div class="url-row">
+      <input type="text" id="urlField" readonly>
+      <button id="copyBtn" type="button">Copiar</button>
+    </div>
+    <span class="copy-feedback" id="copyFeedback" aria-live="polite"></span>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="screenBackdrop" hidden>
+  <div class="modal modal-screen" role="dialog" aria-modal="true" aria-labelledby="screenModalTitle">
+    <button class="modal-close" id="screenModalClose" aria-label="Cerrar">×</button>
+    <h2 id="screenModalTitle">Pantalla ampliada</h2>
+    <canvas id="modalScreen" width="700" height="490"></canvas>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script type="module">
+
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp  = (a,b,t)=>a+(b-a)*t;
+
+/* ============ modes & parameters (from the Atlan quick reference guide) ============ */
+const MODES = [
+  { id:'man',     label:'Man/Spon' },
+  { id:'vc-cmv',  label:'VC-CMV' },
+  { id:'pc-cmv',  label:'PC-CMV' },
+  { id:'vc-simv', label:'VC-SIMV' },
+  { id:'pc-simv', label:'PC-SIMV' },
+  { id:'psv',     label:'PSV/CPAP' },
+];
+const CONTROLLED_MODES = ['vc-cmv','pc-cmv','vc-simv','pc-simv'];
+
+const PARAMS = [
+  { key:'o2',    label:'O₂',    unit:'L/min',   min:0,   max:10, step:0.5, section:'gas',    accent:'#34d399' },
+  { key:'air',   label:'Aire',  unit:'L/min',   min:0,   max:10, step:0.5, section:'gas',    accent:'#c9d2e3' },
+  { key:'n2o',   label:'N₂O',   unit:'L/min',   min:0,   max:10, step:0.5, section:'gas',    accent:'#7fb2ff' },
+  { key:'vapor', label:'Concentración', unit:'%', min:0,  max:8,  step:0.1, section:'vapor' },
+  { key:'apl',   label:'Límite',unit:'cmH₂O',   min:0,   max:70, step:1,   section:'apl' },
+  { key:'fr',    label:'FR',       unit:'rpm',    min:6,  max:30, step:1,   section:'vent', modes:['vc-cmv','pc-cmv','vc-simv','pc-simv'] },
+  { key:'frmin', label:'FRmín',    unit:'rpm',    min:4,  max:20, step:1,   section:'vent', modes:['psv'] },
+  { key:'vt',    label:'VT',       unit:'mL',     min:200,max:800,step:10,  section:'vent', modes:['vc-cmv','vc-simv'] },
+  { key:'pinsp', label:'Pinsp',    unit:'cmH₂O',  min:5,  max:40, step:1,   section:'vent', modes:['pc-cmv','pc-simv'] },
+  { key:'ti',    label:'Ti',       unit:'s',      min:0.8,max:3.0,step:0.1, section:'vent', modes:['vc-cmv','pc-cmv','vc-simv','pc-simv'] },
+  { key:'peep',  label:'PEEP/CPAP',unit:'cmH₂O',  min:0,  max:15, step:1,   section:'vent', modes:['vc-cmv','pc-cmv','vc-simv','pc-simv','psv'] },
+  { key:'pmax',  label:'Pmáx',     unit:'cmH₂O',  min:15, max:60, step:1,   section:'vent', modes:['vc-cmv','vc-simv'] },
+  { key:'dpsop', label:'ΔPsop',    unit:'cmH₂O',  min:0,  max:20, step:1,   section:'vent', modes:['psv','pc-simv','vc-simv'] },
+];
+const AGENTS = {
+  sevo:{label:'Sevoflurano', color:'#fbc02d', max:8},
+  iso: {label:'Isoflurano',  color:'#9b59b6', max:5},
+  des: {label:'Desflurano',  color:'#3b82f6', max:18},
+};
+
+const state = {
+  bootPhase:'off', // off | booting | standby | running
+  mode:'vc-cmv',
+  o2:3, air:0, n2o:0,
+  agent:'sevo', vapor:2.0,
+  apl:20,
+  fr:12, frmin:10, vt:450, pinsp:16, ti:1.6, peep:5, pmax:35, dpsop:8,
+};
+const vit = { hr:72, spo2:98, etco2:35, sys:118, dia:74, alarm:false, alarmPrio:null, alarmMsg:'' };
+let nibpMeasuring=false, alarmAckUntil=0, muteUntil=0, runStart=0, bootTimer=null;
+
+/* ============ photo viewport: tilt + zoom ============ */
+const photoCard = document.getElementById('photoCard');
+const photoStage = document.getElementById('photoStage');
+const zoomResetBtn = document.getElementById('zoomReset');
+let tiltX=0, tiltY=0, zoom=1;
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function applyCardTransform(){
+  photoCard.style.transform = 'perspective(1200px) rotateX('+tiltX+'deg) rotateY('+tiltY+'deg) scale('+zoom+')';
+}
+if(!reducedMotion){
+  photoStage.addEventListener('mousemove', (e)=>{
+    const r = photoCard.getBoundingClientRect();
+    const relX = ((e.clientX - r.left) / r.width) - 0.5;
+    const relY = ((e.clientY - r.top) / r.height) - 0.5;
+    tiltY = clamp(relX*12, -12, 12);
+    tiltX = clamp(-relY*10, -10, 10);
+    applyCardTransform();
+  });
+  photoStage.addEventListener('mouseleave', ()=>{ tiltX=0; tiltY=0; applyCardTransform(); });
+}
+photoStage.addEventListener('wheel', (e)=>{
+  e.preventDefault();
+  zoom = clamp(zoom - e.deltaY*0.0015, 1, 2.4);
+  zoomResetBtn.hidden = zoom<=1.001;
+  applyCardTransform();
+}, { passive:false });
+let pinchDist = null;
+photoStage.addEventListener('touchstart', (e)=>{ if(e.touches.length===2) pinchDist = touchDist(e); }, { passive:true });
+photoStage.addEventListener('touchmove', (e)=>{
+  if(e.touches.length===2 && pinchDist!=null){
+    const d = touchDist(e);
+    zoom = clamp(zoom + (d-pinchDist)*0.006, 1, 2.4);
+    pinchDist = d;
+    zoomResetBtn.hidden = zoom<=1.001;
+    applyCardTransform();
+  }
+}, { passive:true });
+photoStage.addEventListener('touchend', ()=>{ pinchDist=null; });
+function touchDist(e){ const [a,b]=e.touches; return Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY); }
+zoomResetBtn.addEventListener('click', ()=>{ zoom=1; zoomResetBtn.hidden=true; applyCardTransform(); });
+
+/* ============ hotspots: pointing tooltip with arrow ============ */
+const panelBody = document.getElementById('panelBody');
+const hudHint = document.getElementById('hudHint');
+const viewportEl = document.getElementById('viewport');
+const pointTip = document.getElementById('pointTip');
+const pointTipLabel = document.getElementById('pointTipLabel');
+const pointTipDesc = document.getElementById('pointTipDesc');
+const HOTSPOT_INFO = {
+  ctrl:       { label:'Controles / mando rotatorio', desc:'Pantalla táctil y mando: toca un parámetro para seleccionarlo, ajústalo y gira o pulsa el mando para confirmarlo.' },
+  vapor:      { label:'Vaporizador', desc:'Bahía Selectatec: dosifica el agente anestésico halogenado en el gas fresco. Solo un vaporizador puede estar activo a la vez.' },
+  gasmix:     { label:'Mezclador de gases', desc:'Regula la mezcla de O₂, Aire y N₂O que se envía al circuito del paciente, y el flujómetro de O₂ auxiliar.' },
+  absorber:   { label:'Absorbedor de CO₂', desc:'Contiene cal sodada: retira el CO₂ del gas espirado para poder reinhalarlo de forma segura.' },
+  ventpiston: { label:'Ventilador de pistón (E-Vent)', desc:'Genera la ventilación mecánica del paciente según el modo y los parámetros seleccionados.' },
+  bag:        { label:'Bolsa reservorio / circuito', desc:'Permite la ventilación manual y actúa como reservorio de gas fresco para el paciente.' },
+};
+let activeHotspotBtn = null, hintPinned = false, hintPinTimer = null;
+
+function positionTip(btn){
+  const rect = btn.getBoundingClientRect();
+  const vRect = viewportEl.getBoundingClientRect();
+  const cx = rect.left + rect.width/2;
+  const cy = rect.top + rect.height/2;
+  const halfW = 100;
+  const clampedX = clamp(cx, vRect.left+halfW+10, vRect.right-halfW-10);
+  pointTip.style.left = clampedX+'px';
+  pointTip.style.setProperty('--arrow-shift', (cx-clampedX)+'px');
+  if((cy - vRect.top) > 110){
+    pointTip.style.top = (cy-14)+'px';
+    pointTip.classList.add('tip-above');
+    pointTip.classList.remove('tip-below');
+  } else {
+    pointTip.style.top = (cy+14)+'px';
+    pointTip.classList.add('tip-below');
+    pointTip.classList.remove('tip-above');
+  }
+}
+function showTip(btn){
+  const info = HOTSPOT_INFO[btn.dataset.info];
+  if(!info) return;
+  pointTipLabel.textContent = info.label;
+  pointTipDesc.textContent = info.desc;
+  pointTip.hidden = false;
+  activeHotspotBtn = btn;
+  positionTip(btn);
+}
+function hideTip(){
+  pointTip.hidden = true;
+  activeHotspotBtn = null;
+}
+
+document.querySelectorAll('.hotspot').forEach(btn=>{
+  btn.addEventListener('mouseenter', ()=> showTip(btn));
+  btn.addEventListener('mouseleave', ()=>{ if(!hintPinned) hideTip(); });
+  btn.addEventListener('focus', ()=> showTip(btn));
+  btn.addEventListener('blur', ()=>{ if(!hintPinned) hideTip(); });
+  btn.addEventListener('click', ()=>{
+    showTip(btn);
+    hintPinned = true;
+    if(hintPinTimer) clearTimeout(hintPinTimer);
+    hintPinTimer = setTimeout(()=>{ hintPinned = false; hideTip(); }, 5000);
+
+    const targetEl = document.getElementById(btn.dataset.target);
+    if(!targetEl) return;
+    targetEl.scrollIntoView({ behavior: reducedMotion?'auto':'smooth', block:'center' });
+    targetEl.classList.remove('flash-highlight');
+    void targetEl.offsetWidth;
+    targetEl.classList.add('flash-highlight');
+  });
+});
+photoStage.addEventListener('click', (e)=>{
+  if(!e.target.closest('.hotspot')){ hintPinned=false; hideTip(); }
+});
+
+/* ============ boot sequence ============ */
+const els = {
+  power: document.getElementById('ctrlPower'),
+  led: document.getElementById('ledIndicator'),
+  statusText: document.getElementById('statusText'),
+  startBtn: document.getElementById('startBtn'),
+  secGas: document.getElementById('secGas'),
+  secVapor: document.getElementById('secVapor'),
+  secVentWrap: document.getElementById('secVentWrap'),
+  secApl: document.getElementById('secApl'),
+  secAlarms: document.getElementById('secAlarms'),
+  secMonitor: document.getElementById('secMonitor'),
+  alarmBanner: document.getElementById('alarmBanner'),
+  vaporNote: document.getElementById('vaporNote'),
+  aplNote: document.getElementById('aplNote'),
+  agent: document.getElementById('ctrlAgent'),
+  modeLabel: document.getElementById('modeLabel'),
+  modeChips: document.getElementById('modeChips'),
+  gasTiles: document.getElementById('gasTiles'),
+  vaporTiles: document.getElementById('vaporTiles'),
+  ventTiles: document.getElementById('ventTiles'),
+  aplTiles: document.getElementById('aplTiles'),
+  calcFlow: document.getElementById('calcFlow'),
+  calcFio2: document.getElementById('calcFio2'),
+  calcMV: document.getElementById('calcMV'),
+  btnMute: document.getElementById('btnMute'),
+  btnReset: document.getElementById('btnReset'),
+  btnNibp: document.getElementById('btnNibp'),
+  vaporDot: document.getElementById('vaporDot'),
+};
+
+function setLed(phase){
+  els.led.classList.remove('booting','standby','running');
+  if(phase==='booting') els.led.classList.add('booting');
+  else if(phase==='standby') els.led.classList.add('standby');
+  else if(phase==='running') els.led.classList.add('running');
+}
+function updateStatusUI(){
+  const map = { off:'Apagada', booting:'Inicializando… comprobación del sistema', standby:'En espera — pulse Iniciar terapia', running:'Terapia en curso' };
+  els.statusText.textContent = map[state.bootPhase];
+  setLed(state.bootPhase);
+  const enabled = state.bootPhase==='standby' || state.bootPhase==='running';
+  [els.secGas, els.secVapor, els.secVentWrap, els.secApl, els.secAlarms, els.secMonitor].forEach(s=> s.classList.toggle('disabled', !enabled));
+  els.startBtn.hidden = state.bootPhase!=='standby';
+  els.power.checked = state.bootPhase!=='off';
+  if(state.bootPhase!=='running'){ els.alarmBanner.hidden = true; }
+}
+function setPowerSwitch(on){
+  if(on){
+    if(state.bootPhase!=='off') return;
+    state.bootPhase = 'booting';
+    updateStatusUI();
+    bootTimer = setTimeout(()=>{ state.bootPhase = 'standby'; updateStatusUI(); }, 3200);
+  } else {
+    if(bootTimer){ clearTimeout(bootTimer); bootTimer=null; }
+    state.bootPhase = 'off';
+    updateStatusUI();
+  }
+}
+els.power.addEventListener('change', ()=> setPowerSwitch(els.power.checked));
+els.startBtn.addEventListener('click', ()=>{
+  state.bootPhase = 'running';
+  runStart = performance.now();
+  updateStatusUI();
+});
+
+/* ============ tiles: select -> adjust -> confirm ============ */
+const allTiles = [];
+function createTile(def){
+  const el = document.createElement('div');
+  el.className = 'tile state-green';
+  el.dataset.key = def.key;
+  if(def.accent){ el.style.boxShadow = 'inset 3px 0 0 0 '+def.accent; }
+
+  const main = document.createElement('button');
+  main.type = 'button';
+  main.className = 'tile-main';
+  main.innerHTML = '<span class="tile-label">'+def.label+'</span><span class="tile-value"><span class="tile-num"></span><span class="tile-unit">'+def.unit+'</span></span>';
+
+  const edit = document.createElement('div');
+  edit.className = 'tile-edit';
+  edit.hidden = true;
+  edit.innerHTML = '<button type="button" class="tile-btn" data-dir="-1" aria-label="Disminuir '+def.label+'">−</button>'+
+    '<input type="range" class="tile-range" min="'+def.min+'" max="'+def.max+'" step="'+def.step+'">'+
+    '<button type="button" class="tile-btn" data-dir="1" aria-label="Aumentar '+def.label+'">+</button>'+
+    '<button type="button" class="tile-confirm" aria-label="Confirmar con el mando">✓</button>';
+
+  el.appendChild(main);
+  el.appendChild(edit);
+
+  const numEl = main.querySelector('.tile-num');
+  const rangeEl = edit.querySelector('.tile-range');
+  const minusBtn = edit.querySelector('.tile-btn[data-dir="-1"]');
+  const plusBtn = edit.querySelector('.tile-btn[data-dir="1"]');
+  const confirmBtn = edit.querySelector('.tile-confirm');
+
+  let revertTimer=null, blinkTimer=null, prevValue=null;
+
+  function currentMax(){ return def.key==='vapor' ? AGENTS[state.agent].max : def.max; }
+  function render(){
+    if(def.key==='vapor'){ rangeEl.max = currentMax(); }
+    const v = state[def.key];
+    numEl.textContent = def.step<1 ? v.toFixed(1) : Math.round(v).toString();
+    rangeEl.value = v;
+  }
+  function clearTimers(){
+    if(revertTimer){ clearTimeout(revertTimer); revertTimer=null; }
+    if(blinkTimer){ clearTimeout(blinkTimer); blinkTimer=null; }
+    el.classList.remove('tile-blink');
+  }
+  function armRevert(){
+    clearTimers();
+    blinkTimer = setTimeout(()=>{ el.classList.add('tile-blink'); }, 3800);
+    revertTimer = setTimeout(()=>{
+      state[def.key] = prevValue;
+      render();
+      closeEdit();
+      onAnyChange();
+    }, 5000);
+  }
+  function openEdit(){
+    if(el.classList.contains('state-gray')) return;
+    prevValue = state[def.key];
+    el.classList.remove('state-green');
+    el.classList.add('state-yellow');
+    edit.hidden = false;
+    armRevert();
+  }
+  function closeEdit(){
+    clearTimers();
+    edit.hidden = true;
+    el.classList.remove('state-yellow');
+    el.classList.add('state-green');
+  }
+  function applyDelta(dir){
+    const next = clamp(state[def.key] + dir*def.step, def.min, currentMax());
+    state[def.key] = Math.round(next*100)/100;
+    render();
+    armRevert();
+    onAnyChange();
+  }
+
+  main.addEventListener('click', ()=>{ edit.hidden ? openEdit() : closeEdit(); });
+  minusBtn.addEventListener('click', (e)=>{ e.stopPropagation(); applyDelta(-1); });
+  plusBtn.addEventListener('click', (e)=>{ e.stopPropagation(); applyDelta(1); });
+  rangeEl.addEventListener('input', ()=>{
+    state[def.key] = parseFloat(rangeEl.value);
+    render();
+    armRevert();
+    onAnyChange();
+  });
+  confirmBtn.addEventListener('click', (e)=>{ e.stopPropagation(); closeEdit(); onAnyChange(); });
+
+  render();
+  el.setDisabled = (dis)=>{ el.classList.toggle('state-gray', dis); if(dis) closeEdit(); };
+  el.refresh = render;
+  allTiles.push(el);
+  return el;
+}
+
+function onAnyChange(){ recompute(); }
+
+function recompute(){
+  const total = state.o2+state.air+state.n2o;
+  els.calcFlow.textContent = total.toFixed(1)+' L/min';
+  els.calcFio2.textContent = total>0 ? Math.round(clamp(((state.o2*1.0)+(state.air*0.21))/total,0.21,1.0)*100)+' %' : '—';
+  const eff = computeEffVTandMV();
+  els.calcMV.textContent = eff.mv==null ? 'depende del paciente' : eff.mv.toFixed(1)+' L/min';
+}
+
+PARAMS.filter(p=>p.section==='gas').forEach(d=> els.gasTiles.appendChild(createTile(d)));
+PARAMS.filter(p=>p.section==='vapor').forEach(d=> els.vaporTiles.appendChild(createTile(d)));
+let aplTileEl = null;
+PARAMS.filter(p=>p.section==='apl').forEach(d=>{ aplTileEl = createTile(d); els.aplTiles.appendChild(aplTileEl); });
+
+const modeChipEls = [];
+MODES.forEach(m=>{
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'mode-chip';
+  btn.dataset.mode = m.id;
+  btn.textContent = m.label;
+  btn.addEventListener('click', ()=> setMode(m.id));
+  els.modeChips.appendChild(btn);
+  modeChipEls.push(btn);
+});
+function setMode(modeId){
+  state.mode = modeId;
+  els.modeLabel.textContent = MODES.find(m=>m.id===modeId).label;
+  modeChipEls.forEach(c=> c.classList.toggle('active', c.dataset.mode===modeId));
+  els.ventTiles.innerHTML = '';
+  PARAMS.filter(p=>p.section==='vent' && p.modes.includes(modeId)).forEach(d=> els.ventTiles.appendChild(createTile(d)));
+  if(aplTileEl){
+    aplTileEl.setDisabled(modeId!=='man');
+    els.aplNote.textContent = modeId==='man' ? '' : '(controlada por el ventilador)';
+  }
+  recompute();
+}
+setMode(state.mode);
+
+function updateVaporDot(){ els.vaporDot.style.background = AGENTS[state.agent].color; }
+els.agent.addEventListener('change', ()=>{
+  state.agent = els.agent.value;
+  state.vapor = clamp(state.vapor, 0, AGENTS[state.agent].max);
+  updateVaporDot();
+  allTiles.filter(t=>t.dataset.key==='vapor').forEach(t=>t.refresh());
+});
+updateVaporDot();
+
+/* ============ alarms ============ */
+els.btnMute.addEventListener('click', ()=>{ muteUntil = performance.now()+120000; });
+els.btnReset.addEventListener('click', ()=>{ alarmAckUntil = performance.now()+4000; });
+els.btnNibp.addEventListener('click', ()=>{
+  if(nibpMeasuring || state.bootPhase!=='running') return;
+  nibpMeasuring = true;
+  els.btnNibp.disabled = true;
+  els.btnNibp.textContent = 'Midiendo…';
+  setTimeout(()=>{
+    const drift = vit.spo2<92 ? -10 : 0;
+    vit.sys = clamp(118 + drift + (Math.random()*16-8), 70, 190);
+    vit.dia = clamp(vit.sys*0.62 + (Math.random()*8-4), 40, 120);
+    nibpMeasuring = false;
+    els.btnNibp.disabled = false;
+    els.btnNibp.textContent = 'Medir PANI';
+  }, 2600);
+});
+
+/* ============ fullscreen ============ */
+const btnFullscreen = document.getElementById('btnFullscreen');
+function flashHint(msg, ms){
+  hudHint.textContent = msg;
+  hudHint.style.opacity = '1';
+  clearTimeout(flashHint._t);
+  flashHint._t = setTimeout(()=>{ hudHint.style.opacity='0'; }, ms||4500);
+}
+function isFullscreen(){ return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+btnFullscreen.addEventListener('click', async ()=>{
+  try{
+    if(!isFullscreen()){
+      const el = document.documentElement;
+      if(el.requestFullscreen) await el.requestFullscreen();
+      else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      else throw new Error('unsupported');
+    } else {
+      if(document.exitFullscreen) await document.exitFullscreen();
+      else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }
+  } catch(err){
+    flashHint('Esta vista no permite pantalla completa aquí. Abre el enlace del simulador en una pestaña nueva del navegador y vuelve a intentar.', 6000);
+  }
+});
+function updateFsIcon(){ btnFullscreen.title = isFullscreen() ? 'Salir de pantalla completa' : 'Pantalla completa'; }
+document.addEventListener('fullscreenchange', updateFsIcon);
+document.addEventListener('webkitfullscreenchange', updateFsIcon);
+
+/* ============ QR share modal ============ */
+const backdrop = document.getElementById('qrBackdrop');
+const btnShare = document.getElementById('btnShare');
+const qrClose = document.getElementById('qrClose');
+const urlField = document.getElementById('urlField');
+const copyBtn = document.getElementById('copyBtn');
+const copyFeedback = document.getElementById('copyFeedback');
+let qrRendered = false;
+function openQrModal(){
+  backdrop.hidden = false;
+  urlField.value = window.location.href;
+  if(!qrRendered && window.QRCode){
+    new QRCode(document.getElementById('qrcode'), {
+      text: window.location.href,
+      width: 208, height: 208,
+      colorDark: '#0a0f1a', colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+    qrRendered = true;
+  }
+  qrClose.focus();
+}
+function closeQrModal(){ backdrop.hidden = true; btnShare.focus(); }
+btnShare.addEventListener('click', openQrModal);
+qrClose.addEventListener('click', closeQrModal);
+backdrop.addEventListener('click', (e)=>{ if(e.target===backdrop) closeQrModal(); });
+copyBtn.addEventListener('click', async ()=>{
+  try{ await navigator.clipboard.writeText(urlField.value); }
+  catch(err){ urlField.select(); try{ document.execCommand('copy'); }catch(e2){} }
+  copyFeedback.textContent = 'Enlace copiado';
+  setTimeout(()=>{ copyFeedback.textContent=''; }, 2000);
+});
+
+/* ============ screen modal ============ */
+const screenBackdrop = document.getElementById('screenBackdrop');
+const screenHit = document.getElementById('screenHit');
+const screenModalClose = document.getElementById('screenModalClose');
+let screenModalOpen = false;
+screenHit.addEventListener('click', ()=>{ screenBackdrop.hidden=false; screenModalOpen=true; });
+screenModalClose.addEventListener('click', ()=>{ screenBackdrop.hidden=true; screenModalOpen=false; });
+screenBackdrop.addEventListener('click', (e)=>{ if(e.target===screenBackdrop){ screenBackdrop.hidden=true; screenModalOpen=false; } });
+
+document.addEventListener('keydown', (e)=>{
+  if(e.key!=='Escape') return;
+  if(!backdrop.hidden) closeQrModal();
+  if(!screenBackdrop.hidden){ screenBackdrop.hidden=true; screenModalOpen=false; }
+});
+
+/* ============ physiology ============ */
+function estimateVT(drivingPressure, peep){ return clamp(Math.max(drivingPressure-peep,0)*22, 100, 900); }
+function computeEffVTandMV(){
+  const m = state.mode;
+  if(m==='vc-cmv' || m==='vc-simv') return { vt: state.vt, resp: state.fr, mv: state.vt*state.fr/1000 };
+  if(m==='pc-cmv' || m==='pc-simv'){ const vt = estimateVT(state.pinsp, state.peep); return { vt, resp: state.fr, mv: vt*state.fr/1000 }; }
+  if(m==='psv'){ const vt = estimateVT(state.dpsop+state.peep, state.peep); return { vt, resp: state.frmin, mv: null }; }
+  return { vt: 400, resp: 14, mv: null };
+}
+function tickPhysiology(){
+  if(state.bootPhase!=='running') return;
+  const eff = computeEffVTandMV();
+  let etco2Target, spo2Target;
+  if(eff.mv==null){ etco2Target = 36; spo2Target = 97; }
+  else if(eff.mv < 3.5){ etco2Target = 60; spo2Target = 84; }
+  else if(eff.mv > 10){ etco2Target = 20; spo2Target = 99; }
+  else { const t=(eff.mv-3.5)/(10-3.5); etco2Target = 48 - t*18; spo2Target = 95 + t*4; }
+
+  vit.etco2 = clamp(lerp(vit.etco2, etco2Target, 0.045) + (Math.random()-0.5)*0.4, 10, 80);
+  vit.spo2  = clamp(lerp(vit.spo2, spo2Target, 0.045) + (Math.random()-0.5)*0.15, 70, 100);
+  const hrTarget = vit.spo2<92 ? 112 : 72;
+  vit.hr = clamp(lerp(vit.hr, hrTarget, 0.03) + (Math.random()-0.5)*0.6, 45, 140);
+
+  if(vit.spo2<85 || vit.etco2>60){
+    vit.alarm = true; vit.alarmPrio = 'high';
+    vit.alarmMsg = '!!! Alarma simulada de prioridad alta — hipoventilación grave';
+  } else if(vit.spo2<90 || vit.etco2>55 || vit.etco2<22){
+    vit.alarm = true; vit.alarmPrio = 'agent';
+    vit.alarmMsg = vit.etco2<22 ? '!! Alarma simulada — hiperventilación' : '!! Alarma simulada — hipoventilación';
+  } else {
+    vit.alarm = false; vit.alarmPrio = null;
+  }
+
+  const now = performance.now();
+  const acked = now < alarmAckUntil;
+  els.alarmBanner.hidden = !vit.alarm || acked;
+  if(vit.alarm && !acked){
+    els.alarmBanner.textContent = vit.alarmMsg;
+    els.alarmBanner.className = 'alarm-banner prio-'+vit.alarmPrio;
+  }
+  const muted = now < muteUntil;
+  els.btnMute.classList.toggle('active', muted);
+  els.btnMute.textContent = muted ? '🔕 Silenciada ('+Math.ceil((muteUntil-now)/1000)+'s)' : '🔔 Silenciar 2 min';
+}
+
+/* ============ curves ============ */
+const N = 160;
+const pawArr = new Array(N).fill(0);
+const flowArr = new Array(N).fill(0);
+const capnoArr = new Array(N).fill(0);
+let ventPhase = 0;
+
+function ventCurve(phase, mode, p){
+  if(mode==='vc-cmv' || mode==='vc-simv'){
+    const tiFrac = 0.32;
+    if(phase < tiFrac){ const t=phase/tiFrac; return { paw: p.peep + (p.pmax-p.peep)*Math.min(1,t*3), flow: 1 }; }
+    const t=(phase-tiFrac)/(1-tiFrac);
+    return { paw: lerp(p.pmax, p.peep, Math.min(1,t*4)), flow: -Math.max(0,1-t*3) };
+  }
+  if(mode==='pc-cmv' || mode==='pc-simv'){
+    const tiFrac = 0.32;
+    if(phase < tiFrac){ const t=phase/tiFrac; return { paw: p.peep + (p.pinsp-p.peep)*Math.min(1,t*6), flow: Math.exp(-t*3.2) }; }
+    const t=(phase-tiFrac)/(1-tiFrac);
+    return { paw: lerp(p.pinsp, p.peep, Math.min(1,t*4)), flow: -Math.max(0,1-t*3) };
+  }
+  const a = Math.max(0, Math.sin(Math.PI*Math.min(phase/0.4,1)));
+  const amp = mode==='psv' ? (p.dpsop||6) : 3;
+  return { paw: p.peep + amp*Math.pow(a,1.5), flow: Math.cos(Math.PI*Math.min(phase/0.4,1))*a };
+}
+function capnoWave(p){
+  if(p<0.06) return p/0.06;
+  if(p<0.52) return 1 + (p-0.06)*0.15;
+  if(p<0.6) return 1 - (p-0.52)/0.08;
+  return 0;
+}
+
+/* ============ unified screen drawing (mini + modal) ============ */
+const miniCanvas = document.getElementById('miniScreen');
+const mctx = miniCanvas.getContext('2d');
+const modalCanvas = document.getElementById('modalScreen');
+const dctx = modalCanvas.getContext('2d');
+
+function fitCanvas(canvas){
+  const rect = canvas.getBoundingClientRect();
+  const w = Math.max(1, Math.round(rect.width));
+  const h = Math.max(1, Math.round(rect.height));
+  if(canvas.width!==w || canvas.height!==h){ canvas.width=w; canvas.height=h; }
+}
+
+function drawScreen(ctx, w, h, detailed){
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle = '#050a14';
+  ctx.fillRect(0,0,w,h);
+
+  if(state.bootPhase==='off'){
+    if(detailed){
+      ctx.fillStyle = '#333e58';
+      ctx.font = '600 20px "IBM Plex Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('EQUIPO APAGADO', w/2, h/2);
+    }
+    return;
+  }
+  if(state.bootPhase==='booting'){
+    ctx.fillStyle = '#e7ecf5';
+    ctx.textAlign = 'center';
+    if(detailed){
+      ctx.font = '600 20px "IBM Plex Mono", monospace';
+      const dots = '.'.repeat(1+Math.floor(performance.now()/400)%3);
+      ctx.fillText('Inicializando'+dots, w/2, h/2-8);
+      ctx.font = '400 12px "IBM Plex Sans", sans-serif';
+      ctx.fillStyle = '#8c99b3';
+      ctx.fillText('Comprobación de válvulas y sensores', w/2, h/2+16);
+    } else {
+      ctx.fillStyle = '#f5b942';
+      ctx.font = '600 '+Math.round(h*0.5)+'px sans-serif';
+      ctx.fillText('…', w/2, h*0.68);
+    }
+    return;
+  }
+  if(state.bootPhase==='standby'){
+    const flowOk = (state.o2+state.air+state.n2o) > 0;
+    ctx.fillStyle = flowOk ? '#22c55e' : '#facc15';
+    ctx.fillRect(0,0,w,h);
+    if(detailed){
+      ctx.fillStyle = '#04150b';
+      ctx.font = '700 18px "IBM Plex Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(flowOk ? 'Sistema listo — En espera' : 'Revise el flujo de gas fresco', w/2, h*0.28);
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#0b2313';
+      ctx.font = '500 15px "IBM Plex Mono", monospace';
+      ctx.fillText('Gas fresco: O₂ '+state.o2.toFixed(1)+'  Aire '+state.air.toFixed(1)+'  N₂O '+state.n2o.toFixed(1)+' L/min', 24, h*0.48);
+      ctx.fillText('Vaporizador: '+AGENTS[state.agent].label+' '+state.vapor.toFixed(1)+' %', 24, h*0.58);
+      ctx.fillStyle = '#123b1a';
+      ctx.font = '400 13px "IBM Plex Sans", sans-serif';
+      ctx.fillText('Pulse "Iniciar terapia" en el panel para comenzar.', 24, h*0.75);
+    }
+    return;
+  }
+
+  // running
+  if(detailed){
+    ctx.fillStyle = '#16294a';
+    ctx.fillRect(0,0,w,40);
+    ctx.fillStyle = '#e7ecf5';
+    ctx.font = '600 15px "IBM Plex Sans", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(MODES.find(m=>m.id===state.mode).label, 14, 26);
+    ctx.textAlign = 'right';
+    ctx.font = '500 12px "IBM Plex Mono", monospace';
+    const secs = Math.floor((performance.now()-runStart)/1000);
+    const mm = String(Math.floor(secs/60)).padStart(2,'0'), ss = String(secs%60).padStart(2,'0');
+    ctx.fillText(mm+':'+ss, w-14, 26);
+    ctx.textAlign = 'left';
+  }
+
+  const acked = performance.now() < alarmAckUntil;
+  if(vit.alarm && !acked){
+    ctx.fillStyle = vit.alarmPrio==='high' ? 'rgba(194,58,82,.85)' : 'rgba(201,154,26,.8)';
+    if(detailed){
+      ctx.fillRect(0,40,w,24);
+      ctx.fillStyle = '#fff';
+      ctx.font = '600 12px "IBM Plex Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(vit.alarmMsg, w/2, 57);
+      ctx.textAlign = 'left';
+    } else {
+      ctx.fillRect(0,0,w,4);
+    }
+  }
+
+  const top = detailed ? 74 : 4;
+  const bottom = detailed ? h-56 : h-4;
+  const bandH = (bottom-top)/(detailed?3:2);
+
+  function drawCurve(arr, y0, hgt, colorHex, maxVal, labelText){
+    ctx.strokeStyle = colorHex;
+    ctx.lineWidth = detailed?1.8:1.4;
+    ctx.beginPath();
+    for(let i=0;i<arr.length;i++){
+      const x = (i/(arr.length-1))*w;
+      const y = y0+hgt - clamp(arr[i]/maxVal,-1,1)*hgt;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    if(detailed && labelText){
+      ctx.fillStyle = colorHex;
+      ctx.font = '600 10px "IBM Plex Mono", monospace';
+      ctx.fillText(labelText, 8, y0+10);
+    }
+  }
+  drawCurve(pawArr, top, bandH*0.85, '#60a5fa', 45, detailed?'Paw':null);
+  drawCurve(flowArr.map(v=>v*0.5+0.5), top+bandH, bandH*0.8, '#a78bfa', 1, detailed?'Flujo':null);
+  if(detailed) drawCurve(capnoArr, top+bandH*2, bandH*0.85, '#facc15', 1.3, 'EtCO₂');
+
+  if(detailed){
+    const eff = computeEffVTandMV();
+    const chips = state.mode==='man'
+      ? [['APL', state.apl.toFixed(0)+' cmH₂O']]
+      : (state.mode==='psv'
+        ? [['FRmín', state.frmin.toFixed(0)], ['PEEP', state.peep.toFixed(0)], ['ΔPsop', state.dpsop.toFixed(0)]]
+        : [['FR', state.fr.toFixed(0)], [state.mode.startsWith('vc')?'VT':'Pinsp', state.mode.startsWith('vc')?state.vt.toFixed(0):state.pinsp.toFixed(0)], ['PEEP', state.peep.toFixed(0)]]);
+    let cx = 12;
+    const chipY = h-46, chipW = (w-24-8*(chips.length-1))/Math.max(chips.length,1);
+    chips.forEach(([lbl,val])=>{
+      ctx.fillStyle = 'rgba(52,211,153,.16)';
+      ctx.fillRect(cx, chipY, chipW, 38);
+      ctx.strokeStyle = '#34d399';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(cx, chipY, chipW, 38);
+      ctx.fillStyle = '#8fe3c4';
+      ctx.font = '600 9.5px "IBM Plex Sans", sans-serif';
+      ctx.fillText(lbl, cx+8, chipY+14);
+      ctx.fillStyle = '#e7ecf5';
+      ctx.font = '700 15px "IBM Plex Mono", monospace';
+      ctx.fillText(val, cx+8, chipY+31);
+      cx += chipW+8;
+    });
+    ctx.fillStyle = '#e7ecf5';
+    ctx.font = '600 12px "IBM Plex Mono", monospace';
+    ctx.fillText('FC '+Math.round(vit.hr)+'  SpO₂ '+Math.round(vit.spo2)+'%  PANI '+Math.round(vit.sys)+'/'+Math.round(vit.dia), 12, top-8);
+    void eff;
+  }
+}
+
+/* ============ animation loop ============ */
+let physAccum = 0;
+let lastTime = performance.now();
+
+function animate(){
+  requestAnimationFrame(animate);
+  const now = performance.now();
+  const dt = Math.min((now-lastTime)/1000, 0.05);
+  lastTime = now;
+
+  if(activeHotspotBtn) positionTip(activeHotspotBtn);
+
+  const running = state.bootPhase==='running';
+  const eff = computeEffVTandMV();
+  const respRate = eff.resp || 14;
+
+  if(running){
+    ventPhase = (ventPhase + dt*(respRate/60)) % 1;
+    const c = ventCurve(ventPhase, state.mode, state);
+    pawArr.shift(); pawArr.push(clamp(c.paw,0,60));
+    flowArr.shift(); flowArr.push(clamp(c.flow,-1,1));
+    capnoArr.shift(); capnoArr.push(capnoWave(ventPhase)*clamp(vit.etco2/50,0.3,1.3));
+  } else {
+    pawArr.fill(0); flowArr.fill(0); capnoArr.fill(0);
+  }
+
+  physAccum += dt;
+  if(physAccum > 0.15){ physAccum = 0; tickPhysiology(); }
+
+  fitCanvas(miniCanvas);
+  drawScreen(mctx, miniCanvas.width, miniCanvas.height, false);
+  if(screenModalOpen){
+    drawScreen(dctx, modalCanvas.width, modalCanvas.height, true);
+  }
+}
+animate();
+updateStatusUI();
+
+/* ============ hot reload snapshot ============ */
+function getSnapshot(){ return { ...state }; }
+function start(saved){
+  if(saved && Object.keys(saved).length){
+    Object.assign(state, saved);
+    els.agent.value = state.agent;
+    updateVaporDot();
+    setMode(state.mode);
+    allTiles.forEach(t=>t.refresh());
+    updateStatusUI();
+    recompute();
+  }
+}
+if(window.claude?.hot){
+  window.claude.hot.snapshot(getSnapshot);
+  window.claude.hot.ready ? window.claude.hot.ready(start) : start(window.claude.hot.data ?? {});
+}
+
+/* ============ mobile bottom-sheet grip ============ */
+const panel = document.getElementById('panel');
+const panelGrip = document.getElementById('panelGrip');
+function toggleSheet(){
+  const collapsed = panel.classList.toggle('collapsed');
+  panelGrip.setAttribute('aria-expanded', String(!collapsed));
+  panelBody.style.display = collapsed ? 'none' : 'flex';
+}
+panelGrip.addEventListener('click', toggleSheet);
+panelGrip.addEventListener('keydown', (e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggleSheet(); } });
+
+setTimeout(()=>{ hudHint.style.opacity='0'; }, 9000);
+</script>
